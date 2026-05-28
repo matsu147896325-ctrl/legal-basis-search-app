@@ -103,61 +103,66 @@ const splitSentences = (body) =>
     .replace(/\n/g, "")
     .split("。")
     .map(readableSentence)
-    .filter((sentence) => sentence.length > 18 && !/^(問|答|なお、?設問|根拠|参考)/.test(sentence))
-    .slice(0, 8);
+    .filter(
+      (sentence) =>
+        sentence.length > 18 &&
+        !/^(問|答|なお、?設問|根拠|参考|参照)/.test(sentence) &&
+        !/(どうなるか|よいか|示されたい|説明されたい|取り扱うのか|するのか|すべきか|なるのか|できるか|あるか)$/.test(sentence),
+    )
+    .slice(0, 14);
 
-const judgeTone = (body) => {
-  if (/認められない|できない|適当ではない|誤りである|廃止する/.test(body)) {
-    return "この項目は、できない扱いや注意が必要な場面を確認するためのものです。";
-  }
-  if (/認められる|できる|差し支えない|可能である|支給する/.test(body)) {
-    return "この項目は、条件を満たす場合に認められる扱いを確認するためのものです。";
-  }
-  return "この項目は、事実関係を確認したうえで、どの扱いにするか判断するためのものです。";
+const sentenceScore = (sentence, index) => {
+  let score = Math.max(0, 8 - index);
+  if (/である|となる|必要|要する|認め|扱|判断|留意|注意|支給|認定|適用/.test(sentence)) score += 8;
+  if (/どうなるか|よいか|されたいか|この場合/.test(sentence)) score -= 8;
+  if (/^\s*（/.test(sentence)) score -= 3;
+  return score;
 };
 
-const makeExplanation = (item) => {
+const makeSummary = (item) => {
   const sentences = splitSentences(item.body || "");
   const refs = item.references?.length ? item.references : [];
-  const title = item.title.replace(/^（問[^）]+）\s*/, "");
-  const point = sentences[0] || "本文から判断のポイントを確認してください。";
-  const practice =
-    sentences.find((sentence) => sentence !== point && !/示されたい|どうなるか|よいか/.test(sentence) && /必要|確認|調査|判断|留意|扱い|要件/.test(sentence)) ||
-    sentences.find((sentence) => sentence !== point) ||
-    point;
+  const selected = sentences
+    .map((sentence, index) => ({ sentence, index, score: sentenceScore(sentence, index) }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3)
+    .sort((a, b) => a.index - b.index)
+    .map(({ sentence }) => sentence);
+  const summary = selected.length
+    ? `${selected.join("。")}。`
+    : "本文から要約できる十分な文章を抽出できませんでした。本文を確認してください。";
   return {
-    lead: `これは「${title}」について、生活保護の運用上どう扱うかを確認する項目です。${judgeTone(item.body || "")}`,
-    points: [
-      `中心になる考え方は「${point}」という部分です。`,
-      `実務では「${practice}」という点を見落とさないようにします。`,
-      refs.length
-        ? `根拠候補として、${refs.slice(0, 5).map(displayRef).join("、")} が本文中に出ています。`
-        : "本文中から自動で拾える根拠候補はありません。本文全体を確認してください。",
-    ],
-    note:
-      "この解説は本文を読みやすく言い換えた補助表示です。最終判断では、本文の原文と根拠候補をあわせて確認してください。",
+    summary,
+    refs,
+    note: "要約は本文から自動作成しています。最終判断では、下の本文と根拠法令・通知を確認してください。",
   };
 };
 
 const renderExplanation = (item) => {
-  const explanation = makeExplanation(item);
+  const summary = makeSummary(item);
   explanationEl.innerHTML = `
     <p class="eyebrow">${escapeHtml(item.chapter || "章未分類")}</p>
     <h2>${escapeHtml(item.title)}</h2>
-    <p class="explain-lead">${escapeHtml(explanation.lead)}</p>
     <div class="explain-group">
-      <h3>平易な解説</h3>
-      <ul class="explain-list">
-        ${explanation.points.map((point) => `<li>${escapeHtml(point)}</li>`).join("")}
-      </ul>
+      <h3>本文要約</h3>
+      <p class="explain-text">${escapeHtml(summary.summary)}</p>
     </div>
     <div class="explain-group">
-      <h3>確認メモ</h3>
-      <p class="explain-text">${escapeHtml(explanation.note)}</p>
+      <h3>根拠法令・通知</h3>
+      <div class="refs">
+        ${
+          summary.refs.length
+            ? summary.refs
+                .map((ref) => `<span class="ref ${refClass(ref)}">${escapeHtml(displayRef(ref))}</span>`)
+                .join("")
+            : '<span class="ref">本文中に明示なし</span>'
+        }
+      </div>
     </div>
     <div class="explain-group">
       <h3>本文</h3>
-      <p class="explain-body">${escapeHtml(item.body || "この項目は削除項目、または本文を抽出できなかった項目です。")}</p>
+      <p class="explain-body">${escapeHtml(item.body)}</p>
+      <p class="explain-text">${escapeHtml(summary.note)}</p>
     </div>
   `;
 };
