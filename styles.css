@@ -193,6 +193,13 @@ input:focus {
   gap: 6px;
 }
 
+.ref-label {
+  margin: 0 0 -8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .ref {
   border-radius: 999px;
   padding: 5px 9px;
@@ -281,7 +288,8 @@ summary {
 
 .explain-lead,
 .explain-text,
-.explain-list {
+.explain-list,
+.explain-body {
   margin: 0;
   color: #303a35;
   line-height: 1.75;
@@ -306,6 +314,16 @@ summary {
 
 .explain-list li + li {
   margin-top: 6px;
+}
+
+.explain-body {
+  max-height: 360px;
+  overflow: auto;
+  white-space: pre-wrap;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcf8;
 }
 
 @media (max-width: 820px) {

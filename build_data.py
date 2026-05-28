@@ -90,7 +90,8 @@ def extract_doc_text(path: Path) -> str:
     for index in range(count):
         fc_compressed = struct.unpack_from("<I", table, pcd_offset + index * 8 + 2)[0]
         compressed = bool(fc_compressed & 0x40000000)
-        start = (fc_compressed & 0x3FFFFFFF) // 2
+        file_offset = fc_compressed & 0x3FFFFFFF
+        start = file_offset // 2 if compressed else file_offset
         char_count = cps[index + 1] - cps[index]
         raw = word[start : start + (char_count if compressed else char_count * 2)]
         parts.append(raw.decode("cp932" if compressed else "utf-16le", "ignore"))
@@ -112,6 +113,7 @@ CHAPTER_RE = re.compile(r"^第[０-９0-9一二三四五六七八九十]+[ 　].
 REFERENCE_RE = re.compile(
     r"(生活保護法|児童福祉法|老人福祉法|障害者総合支援法|感染症予防法|心神喪失者等医療観察法|"
     r"高齢者虐待.*法律|法第[０-９0-9]+条(?:の[０-９0-9]+)?|法施行規則第[０-９0-9]+条|"
+    r"告示別表第[^、。\n）)]*|局第[０-９0-9]+[－ー―-][^、。\n）)]*|"
     r"局長通知第[^、。\n）)]*|課長通知第[^、。\n）)]*|次官通知第[^、。\n）)]*|"
     r"局長問答第[^、。\n）)]*|課長問答第[^、。\n）)]*|別冊問答集?[^、。\n）)]*|"
     r"昭和[０-９0-9]+年[^、。\n）)]*|平成[０-９0-9]+年[^、。\n）)]*|令和[０-９0-9]+年[^、。\n）)]*|"
@@ -247,7 +249,6 @@ def main() -> None:
     items = build_items(text)
     payload = {
         "source": SOURCE_DOC.name,
-        "generatedFrom": str(SOURCE_DOC),
         "itemCount": len(items),
         "items": items,
     }

@@ -45,7 +45,7 @@ const highlight = (text, terms) => {
 
 const hasFilter = (item) => {
   const refs = item.references || [];
-  if (activeFilter === "law") return refs.some((ref) => /法第|生活保護法|福祉法|施行規則|法律/.test(ref));
+  if (activeFilter === "law") return refs.some((ref) => /法第|生活保護法|福祉法|施行規則|法律|告示|別表/.test(ref));
   if (activeFilter === "notice") return refs.some((ref) => /通知|社発/.test(ref));
   if (activeFilter === "qa") return refs.some((ref) => /問答/.test(ref));
   return true;
@@ -80,7 +80,7 @@ const makeSnippet = (item, rawTerms) => {
   return `${start > 0 ? "…" : ""}${snippet}${start + 240 < body.length ? "…" : ""}`;
 };
 
-const refClass = (ref) => (/法第|生活保護法|福祉法|施行規則|法律/.test(ref) ? "law" : "");
+const refClass = (ref) => (/法第|生活保護法|福祉法|施行規則|法律|告示|別表/.test(ref) ? "law" : "");
 const displayRef = (ref) => {
   let output = normalizeSpaces(ref).replace(/－ \(/g, "－(");
   if (/\([^)]$/.test(output) || /\([^)]+$/.test(output)) {
@@ -155,6 +155,10 @@ const renderExplanation = (item) => {
       <h3>確認メモ</h3>
       <p class="explain-text">${escapeHtml(explanation.note)}</p>
     </div>
+    <div class="explain-group">
+      <h3>本文</h3>
+      <p class="explain-body">${escapeHtml(item.body || "この項目は削除項目、または本文を抽出できなかった項目です。")}</p>
+    </div>
   `;
 };
 
@@ -194,7 +198,7 @@ const render = () => {
     node.querySelector(".snippet").innerHTML = highlight(makeSnippet(item, rawTerms), rawTerms);
     node.querySelector(".body").innerHTML = highlight(item.body, rawTerms);
     const refsEl = node.querySelector(".refs");
-    const refs = item.references?.length ? item.references : ["根拠候補なし"];
+    const refs = item.references?.length ? item.references : ["本文中に明示なし"];
     refs.forEach((ref) => {
       const chip = document.createElement("span");
       chip.className = `ref ${refClass(ref)}`;
